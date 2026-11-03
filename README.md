@@ -1,5 +1,8 @@
 # proxima
 
+Bring your own key (BYOK): proxima stores no API key. Clients send their
+Google key in `Authorization: Bearer <key>`, and it is passed straight through.
+
 I wanted to use `gemini-4-argon` in my daily driver, but my client only speaks
 OpenAI. So I built this tiny translation layer: an OpenAI-compatible proxy in
 front of a Google Generative AI endpoint.
