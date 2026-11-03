@@ -385,7 +385,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   try {
-    if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/')) {
+    if (req.method === 'GET' && url.pathname === '/') {
+      res.writeHead(302, { Location: 'https://github.com/kodee2k/proxima', ...corsHeaders() });
+      res.end();
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/health') {
       sendJson(res, 200, { status: 'ok', model: MODEL_ID, base_url: BASE_URL });
       return;
     }
