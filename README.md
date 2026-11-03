@@ -39,7 +39,9 @@ export OPENAI_API_KEY=$PASSTHROUGH_KEY
 - `PORT` (default `8787`)
 - `HOST` (default `0.0.0.0`)
 - `GOOGLE_BASE_URL` / `BASE_URL` (default `https://opencode.ai/inference/go/google/v1beta`)
-- `MODEL_ID` (default `gemini-4-argon`)
+- `UPSTREAM` (default `google`; set to `openrouter` to route through OpenRouter)
+- `MODEL_ID` (default `gemini-4-argon`, or `google/gemini-4-argon:batch` when `UPSTREAM=openrouter`)
+- `UPSTREAM_BASE_URL` (optional; defaults to the OpenRouter or Google base URL)
 - `PASSTHROUGH_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY` (optional fallback API key)
 - `OPENCODE_SESSION` (optional) — stable session id sent as `x-opencode-session` (auto-generated if unset)
 
