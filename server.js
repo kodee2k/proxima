@@ -1,6 +1,4 @@
 import http from 'node:http';
-import fs from 'node:fs';
-import path from 'node:path';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, generateText, tool, jsonSchema } from 'ai';
 
@@ -8,19 +6,6 @@ const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '0.0.0.0';
 const BASE_URL = (process.env.GOOGLE_BASE_URL || process.env.BASE_URL || 'https://opencode.ai/inference/go/google/v1beta').replace(/\/$/, '');
 const MODEL_ID = process.env.MODEL_ID || 'gemini-4-argon';
-const LOG_DIR = process.env.LOG_DIR || 'logs';
-const LOG_FILE = path.join(LOG_DIR, 'proxima.jsonl');
-
-fs.mkdirSync(LOG_DIR, { recursive: true });
-
-function logEvent(event) {
-  try {
-    fs.appendFileSync(LOG_FILE, JSON.stringify(event) + '\n');
-  } catch (e) {
-    console.error('log write failed', e);
-  }
-}
-
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -197,14 +182,11 @@ async function handleChatCompletions(req, res) {
   try { body = await readJson(req); }
   catch (e) { sendJson(res, 400, { error: { message: 'Invalid JSON body', type: 'invalid_request_error' } }); return; }
 
-  logEvent({ ts: new Date().toISOString(), type: 'request', id: reqId, method: req.method, path: '/v1/chat/completions', body });
-
   const apiKey = extractKey(req, body);
   const sessionId = req.headers['x-opencode-session'] || process.env.OPENCODE_SESSION || (globalThis.crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
   res.setHeader('x-opencode-session', sessionId);
   if (!apiKey) {
     const err = { error: { message: 'Missing API key. Set PASSTHROUGH_KEY/GOOGLE_GENERATIVE_AI_API_KEY or pass Bearer token.', type: 'authentication_error' } };
-    logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 401, error: err });
     sendJson(res, 401, err);
     return;
   }
@@ -271,12 +253,10 @@ async function handleChatCompletions(req, res) {
         choices: [{ index: 0, message, finish_reason: finishReason }],
         usage,
       };
-      logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 200, stream: false, request: body, response: resp, duration_ms: Date.now() - started });
       sendJson(res, 200, resp);
     } catch (e) {
       console.error('generate error', e);
       const err = { error: { message: String(e && e.message ? e.message : e), type: 'server_error' } };
-      logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 500, stream: false, error: err, duration_ms: Date.now() - started });
       sendJson(res, 500, err);
     }
     return;
@@ -378,27 +358,10 @@ async function handleChatCompletions(req, res) {
     }
 
     const assembledToolCalls = toolCalls.filter(Boolean);
-    logEvent({
-      ts: new Date().toISOString(),
-      type: 'response',
-      id: reqId,
-      status: 200,
-      stream: true,
-      request: body,
-      response: {
-        id: completionId,
-        object: 'chat.completion',
-        created,
-        model: echoModel,
-        choices: [{ index: 0, message: { role: 'assistant', content: textContent || null, ...(assembledToolCalls.length ? { tool_calls: assembledToolCalls } : {}) }, finish_reason: finishReason }],
-        usage,
-      },
-      duration_ms: Date.now() - started,
-    });
   } catch (e) {
     console.error('stream error', e);
     const err = { error: { message: String(e && e.message ? e.message : e), type: 'server_error' } };
-    logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 500, stream: true, error: err, duration_ms: Date.now() - started });
+
     try { res.write(`data: ${JSON.stringify(err)}\n\n`); } catch {}
   } finally {
     res.write('data: [DONE]\n\n');
@@ -445,5 +408,4 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`proxima listening on http://${HOST}:${PORT}`);
   console.log(`base_url=${BASE_URL} model=${MODEL_ID}`);
-  console.log(`logs=${LOG_FILE}`);
 });
