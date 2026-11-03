@@ -10,5 +10,6 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.111",
     "ai": "^7.0.162"
-  }
+  },
+  "author": "Leon Lehmann <https://empero.org>"
 }

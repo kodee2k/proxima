@@ -38,3 +38,7 @@ The client's `Authorization: Bearer <token>` is also accepted and used as the Go
 ## Logging
 
 Every request and response is appended as a JSON line to `logs/proxima.jsonl` for training.
+
+## Credits
+
+Built by [Leon Lehmann](https://empero.org) for [Empero](https://empero.org).
