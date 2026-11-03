@@ -7,7 +7,7 @@ front of a Google Generative AI endpoint.
 It exposes `/v1/chat/completions` (streaming and non-streaming) and `/v1/models`,
 translating OpenAI requests to the Google Generative AI format using `@ai-sdk/google`.
 
-Target endpoint: `https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon`
+Operating target (default, configurable via `GOOGLE_BASE_URL`/`MODEL_ID`): `https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon`
 
 ## Run
 
