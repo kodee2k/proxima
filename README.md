@@ -17,10 +17,15 @@ Operating target (default, configurable via `GOOGLE_BASE_URL`/`MODEL_ID`): `http
 
 ```bash
 npm install
-PASSTHROUGH_KEY=your_go_key npm start
+npm start
 ```
 
 The server listens on `http://0.0.0.0:8787` by default.
+
+No server-side key is required: clients send their Google key in
+`Authorization: Bearer <key>` and it is passed straight through (BYOK).
+`PASSTHROUGH_KEY` (or `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`) is an
+optional fallback used only when a request has no `Authorization` header.
 
 Use with any OpenAI-only client:
 
