@@ -50,7 +50,7 @@ function extractKey(req, body) {
   const auth = req.headers['authorization'] || '';
   const m = auth.match(/^Bearer\s+(.+)$/i);
   if (m) return m[1].trim();
-  return process.env.GO_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY || '';
+  return process.env.PASSTHROUGH_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY || '';
 }
 
 function contentToText(content) {
@@ -203,7 +203,7 @@ async function handleChatCompletions(req, res) {
   const sessionId = req.headers['x-opencode-session'] || process.env.OPENCODE_SESSION || (globalThis.crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
   res.setHeader('x-opencode-session', sessionId);
   if (!apiKey) {
-    const err = { error: { message: 'Missing API key. Set GO_KEY/GOOGLE_GENERATIVE_AI_API_KEY or pass Bearer token.', type: 'authentication_error' } };
+    const err = { error: { message: 'Missing API key. Set PASSTHROUGH_KEY/GOOGLE_GENERATIVE_AI_API_KEY or pass Bearer token.', type: 'authentication_error' } };
     logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 401, error: err });
     sendJson(res, 401, err);
     return;
