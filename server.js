@@ -12,7 +12,7 @@ const DEFAULT_BASE_URL = UPSTREAM === 'openrouter'
   ? 'https://openrouter.ai/api/v1'
   : 'https://opencode.ai/inference/go/google/v1beta';
 const BASE_URL = (process.env.UPSTREAM_BASE_URL || process.env.GOOGLE_BASE_URL || process.env.BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
-const MODEL_ID = process.env.MODEL_ID || (UPSTREAM === 'openrouter' ? 'google/gemini-4-argon:batch' : 'gemini-4-argon');
+const MODEL_ID = process.env.MODEL_ID || (UPSTREAM === 'openrouter' ? 'google/gemini-4-argon' : 'gemini-4-argon');
 const LOG_DIR = process.env.LOG_DIR || 'logs';
 const LOG_FILE = path.join(LOG_DIR, 'proxima.jsonl');
 
