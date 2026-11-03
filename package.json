@@ -1,0 +1,14 @@
+{
+  "name": "proxima",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.111",
+    "ai": "^7.0.162"
+  }
+}
