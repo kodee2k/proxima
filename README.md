@@ -1,14 +1,15 @@
 # proxima
 
-Bring your own key (BYOK): proxima stores no API key. Clients send their
-Google key in `Authorization: Bearer <key>`, and it is passed straight through.
-
 I wanted to use `gemini-4-argon` in my daily driver, but my client only speaks
-OpenAI. So I built this tiny translation layer: an OpenAI-compatible proxy in
-front of a Google Generative AI endpoint.
+OpenAI. proxima is a tiny OpenAI-compatible proxy that translates those requests
+to Google's Generative AI format, so I built this translation layer in front of
+my operating target.
 
 It exposes `/v1/chat/completions` (streaming and non-streaming) and `/v1/models`,
 translating OpenAI requests to the Google Generative AI format using `@ai-sdk/google`.
+
+Bring your own key (BYOK): proxima stores no API key. Clients send their
+Google key in `Authorization: Bearer <key>`, and it is passed straight through.
 
 Operating target (default, configurable via `GOOGLE_BASE_URL`/`MODEL_ID`): `https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon`
 
