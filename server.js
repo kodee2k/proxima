@@ -195,6 +195,103 @@ function makeId() {
   return 'chatcmpl-' + (globalThis.crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 }
 
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function handleOpenRouterBatch({ res, body, apiKey, reqId, started, completionId, created, echoModel, includeUsage, stream }) {
+  const requestedModel = body.model || MODEL_ID;
+  const batchModel = requestedModel.endsWith(':batch') ? requestedModel.slice(0, -6) : requestedModel;
+  const inner = { ...body, model: batchModel };
+  delete inner.stream;
+  delete inner.stream_options;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+    'HTTP-Referer': 'https://proxima.empero.org',
+    'X-Title': 'proxima',
+  };
+
+  const fail = (status, message) => {
+    const err = { error: { message, type: 'server_error' } };
+    logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status, stream, error: err, duration_ms: Date.now() - started });
+    sendJson(res, status, err);
+  };
+
+  let submitJson;
+  try {
+    const submitRes = await fetch(`${BASE_URL}/batches`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ endpoint: '/v1/chat/completions', model: batchModel, requests: [{ custom_id: 'proxima-1', body: inner }] }),
+    });
+    const text = await submitRes.text();
+    try { submitJson = JSON.parse(text); } catch { submitJson = { error: { message: text } }; }
+    if (!submitRes.ok) return fail(submitRes.status, submitJson?.error?.message || 'Batch submit failed');
+  } catch (e) {
+    return fail(502, String(e && e.message ? e.message : e));
+  }
+
+  const batchId = submitJson.id;
+  if (!batchId) return fail(502, 'Batch submit did not return an id');
+
+  const pollMs = Number(process.env.OPENROUTER_BATCH_POLL_MS || 5000);
+  const timeoutMs = Number(process.env.OPENROUTER_BATCH_TIMEOUT_MS || 3600000);
+  const deadline = Date.now() + timeoutMs;
+  let batch = submitJson;
+
+  while (!['completed', 'failed', 'expired', 'cancelled'].includes(batch.status)) {
+    if (Date.now() > deadline) return fail(504, 'Batch timed out while polling');
+    await sleep(pollMs);
+    try {
+      const r = await fetch(`${BASE_URL}/batches/${batchId}`, { headers });
+      const text = await r.text();
+      try { batch = JSON.parse(text); } catch { batch = { error: { message: text } }; }
+      if (!r.ok) return fail(r.status, batch?.error?.message || 'Batch poll failed');
+    } catch (e) {
+      return fail(502, String(e && e.message ? e.message : e));
+    }
+  }
+
+  if (batch.status !== 'completed') return fail(502, `Batch ended with status ${batch.status}`);
+  const result = (batch.results || []).find((x) => x.custom_id === 'proxima-1');
+  if (!result) return fail(502, 'Batch result missing');
+  if (result.error) return fail(502, result.error.message || 'Batch result error');
+  const chat = result.response && result.response.body;
+  if (!chat) return fail(502, 'Batch result missing response body');
+
+  chat.id = completionId;
+  chat.created = created;
+  chat.model = echoModel;
+  logEvent({ ts: new Date().toISOString(), type: 'response', id: reqId, status: 200, stream, request: body, response: chat, duration_ms: Date.now() - started });
+
+  if (!stream) {
+    sendJson(res, 200, chat);
+    return;
+  }
+
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    ...corsHeaders(),
+  });
+  res.flushHeaders();
+  const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  const base = { id: completionId, object: 'chat.completion.chunk', created, model: echoModel };
+  send({ ...base, choices: [{ index: 0, delta: { role: 'assistant' }, finish_reason: null }] });
+  const msg = chat.choices && chat.choices[0] && chat.choices[0].message;
+  if (msg && msg.content) send({ ...base, choices: [{ index: 0, delta: { content: msg.content }, finish_reason: null }] });
+  if (msg && msg.tool_calls) send({ ...base, choices: [{ index: 0, delta: { tool_calls: msg.tool_calls }, finish_reason: null }] });
+  const finishReason = (chat.choices && chat.choices[0] && chat.choices[0].finish_reason) || 'stop';
+  const final = { ...base, choices: [{ index: 0, delta: {}, finish_reason: finishReason }] };
+  if (includeUsage && chat.usage) final.usage = chat.usage;
+  send(final);
+  res.write('data: [DONE]\n\n');
+  res.end();
+}
+
 async function handleChatCompletions(req, res) {
   const started = Date.now();
   const reqId = (globalThis.crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
@@ -261,6 +358,18 @@ async function handleChatCompletions(req, res) {
   const completionId = makeId();
   const created = Math.floor(Date.now() / 1000);
   const echoModel = body.model || MODEL_ID;
+
+  const isBatch = UPSTREAM === 'openrouter' && (MODEL_ID.endsWith(':batch') || (body.model && body.model.endsWith(':batch')));
+  if (isBatch) {
+    try {
+      await handleOpenRouterBatch({ res, body, apiKey, reqId, started, completionId, created, echoModel, includeUsage, stream });
+    } catch (e) {
+      console.error('batch error', e);
+      if (!res.headersSent) sendJson(res, 500, { error: { message: String(e && e.message ? e.message : e), type: 'server_error' } });
+      else res.end();
+    }
+    return;
+  }
 
   if (!stream) {
     try {

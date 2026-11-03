@@ -13,6 +13,13 @@ Google key in `Authorization: Bearer <key>`, and it is passed straight through.
 
 Operating target (default, configurable via `GOOGLE_BASE_URL`/`MODEL_ID`): `https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon`
 
+## Batch models
+
+If `UPSTREAM=openrouter` and the model ends with `:batch`, proxima submits the
+request through OpenRouter's Batch API and polls until it completes. Tune with
+`OPENROUTER_BATCH_POLL_MS` (default 5000) and `OPENROUTER_BATCH_TIMEOUT_MS`
+(default 3600000).
+
 ## Run
 
 ```bash
