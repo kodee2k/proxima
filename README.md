@@ -1,6 +1,8 @@
 # proxima
 
-A tiny OpenAI-compatible proxy in front of a Google Generative AI endpoint.
+I wanted to use `gemini-4-argon` in my daily driver, but my client only speaks
+OpenAI. So I built this tiny translation layer: an OpenAI-compatible proxy in
+front of a Google Generative AI endpoint.
 
 It exposes `/v1/chat/completions` (streaming and non-streaming) and `/v1/models`,
 translating OpenAI requests to the Google Generative AI format using `@ai-sdk/google`.
